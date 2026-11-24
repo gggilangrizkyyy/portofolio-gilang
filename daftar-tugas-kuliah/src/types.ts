@@ -7,6 +7,8 @@
  * yang sama bisa dipakai berulang di beberapa file (cukup `import type`).
  */
 
+import type { Course } from './courses.ts';
+
 // =============================================================================
 // [TS-1] TYPE ALIAS + UNION TYPE
 // -----------------------------------------------------------------------------
@@ -26,17 +28,22 @@ export type TaskFilter = 'semua' | 'belum-selesai' | 'selesai';
 export interface Task {
   id: string; // [TS-3a] tipe primitif: string
   title: string;
+
+  // Sengaja bertipe `string`, bukan `Course`, agar data lama di localStorage
+  // (mis. hasil uji coba fase sebelumnya) tetap bisa ditampilkan dengan aman.
   course: string;
+
   deadline: string; // format "YYYY-MM-DD" (dari <input type="date">)
   status: TaskStatus;
   createdAt: string; // timestamp ISO, contoh: "2026-11-24T13:00:00.000Z"
 }
 
-// [TS-2b] Interface untuk data mentah yang datang dari form.
+// [TS-2b] Interface untuk data yang datang dari form.
 // Bedanya dengan Task: belum punya `id` dan `createdAt` karena dibuat aplikasi.
+// `course` di sini bertipe `Course` karena nilainya WAJIB dari dropdown.
 export interface TaskFormData {
   title: string;
-  course: string;
+  course: Course;
   deadline: string;
   status: TaskStatus;
 }

@@ -11,6 +11,7 @@
 
 import './style.css';
 import type { Task, TaskFilter, TaskFormData, TaskStats, TaskStatus } from './types.ts';
+import { COURSES } from './courses.ts';
 import { loadData, saveData } from './storage.ts';
 
 // =============================================================================
@@ -26,7 +27,6 @@ const APP_VERSION: string = import.meta.env.VITE_APP_VERSION || '0.0.0';
 const APP_DESCRIPTION: string = import.meta.env.VITE_DESCRIPTION || 'Aplikasi daftar tugas kuliah.';
 
 const MAX_TITLE_LENGTH: number = 80; // dipakai untuk validasi & atribut maxlength
-const MAX_COURSE_LENGTH: number = 60;
 const DEFAULT_STATUS: TaskStatus = 'Belum Selesai';
 
 // =============================================================================
@@ -44,7 +44,7 @@ let activeFilter: TaskFilter = 'semua';
 // Referensi elemen DOM yang dipakai berulang kali.
 let form: HTMLFormElement;
 let titleInput: HTMLInputElement;
-let courseInput: HTMLInputElement;
+let courseSelect: HTMLSelectElement;
 let deadlineInput: HTMLInputElement;
 let statusSelect: HTMLSelectElement;
 let formTitle: HTMLHeadingElement;
@@ -110,6 +110,34 @@ function isOverdue(task: Task): boolean {
   return deadline.getTime() < Date.now();
 }
 
+/**
+ * Memilih mata kuliah pada dropdown.
+ * Kalau nilainya tidak ada di COURSES (mis. data lama dari fase sebelumnya),
+ * tambahkan opsi sementara agar data tersebut tidak hilang.
+ */
+function setCourseValue(value: string): void {
+  const isKnown = COURSES.some((course) => course === value);
+
+  if (isKnown || value.length === 0) {
+    courseSelect.value = value;
+    return;
+  }
+
+  const option = document.createElement('option');
+  option.value = value;
+  option.textContent = value;
+  option.dataset.temporary = 'true';
+  courseSelect.append(option);
+  courseSelect.value = value;
+}
+
+/** Menghapus opsi sementara (mata kuliah lama) dari dropdown. */
+function clearTemporaryCourses(): void {
+  courseSelect.querySelectorAll('option[data-temporary="true"]').forEach((option) => {
+    option.remove();
+  });
+}
+
 // =============================================================================
 // [TS-7] FUNGSI DENGAN TIPE PARAMETER & RETURN
 // =============================================================================
@@ -153,7 +181,7 @@ function createTask(data: TaskFormData): Task {
   return {
     id: crypto.randomUUID(),
     title: data.title.trim(),
-    course: data.course.trim(),
+    course: data.course,
     deadline: data.deadline,
     status: data.status,
     createdAt: new Date().toISOString(),
@@ -175,7 +203,7 @@ function updateTask(id: string, data: TaskFormData): void {
       ? {
           ...task,
           title: data.title.trim(),
-          course: data.course.trim(),
+          course: data.course,
           deadline: data.deadline,
           status: data.status,
         }
@@ -242,7 +270,7 @@ function readForm(): TaskFormData | null {
   const formData = new FormData(form);
 
   const title = String(formData.get('title') ?? '').trim();
-  const course = String(formData.get('course') ?? '').trim();
+  const courseValue = String(formData.get('course') ?? '');
   const deadline = String(formData.get('deadline') ?? '');
   const statusValue = String(formData.get('status') ?? DEFAULT_STATUS);
 
@@ -259,16 +287,16 @@ function readForm(): TaskFormData | null {
     titleInput.focus();
     return null;
   }
-  if (course.length === 0) {
-    showFormError('Mata kuliah wajib diisi.');
-    courseInput.focus();
+
+  // `COURSES.find` mengembalikan Course | undefined, jadi hasilnya otomatis
+  // bertipe sempit (bukan string biasa) setelah dinyatakan tidak undefined.
+  const course = COURSES.find((item) => item === courseValue);
+  if (!course) {
+    showFormError('Mata kuliah wajib dipilih dari daftar.');
+    courseSelect.focus();
     return null;
   }
-  if (course.length > MAX_COURSE_LENGTH) {
-    showFormError(`Nama mata kuliah maksimal ${MAX_COURSE_LENGTH} karakter.`);
-    courseInput.focus();
-    return null;
-  }
+
   if (deadline.length === 0) {
     showFormError('Deadline wajib dipilih.');
     deadlineInput.focus();
@@ -283,6 +311,7 @@ function readForm(): TaskFormData | null {
 function resetForm(): void {
   editingId = null;
   form.reset();
+  clearTemporaryCourses();
   statusSelect.value = DEFAULT_STATUS;
   clearFormError();
 }
@@ -296,7 +325,7 @@ function startEdit(id: string): void {
 
   editingId = id;
   titleInput.value = task.title;
-  courseInput.value = task.course;
+  setCourseValue(task.course);
   deadlineInput.value = task.deadline;
   statusSelect.value = task.status;
 
@@ -394,6 +423,13 @@ function showFeedback(message: string): void {
 // KERANGKA HALAMAN (dirender sekali)
 // =============================================================================
 
+/** Membuat elemen <option> untuk dropdown mata kuliah. */
+function courseOptions(): string {
+  return COURSES.map(
+    (course) => `<option value="${escapeHtml(course)}">${escapeHtml(course)}</option>`,
+  ).join('');
+}
+
 function appShell(): string {
   return `
     <header class="site-header">
@@ -445,8 +481,10 @@ function appShell(): string {
 
           <div class="field">
             <label for="course">Mata kuliah</label>
-            <input id="course" name="course" type="text" maxlength="${MAX_COURSE_LENGTH}"
-              placeholder="Contoh: Manajemen Basis Data" autocomplete="off" />
+            <select id="course" name="course">
+              <option value="" disabled selected>&mdash; Pilih mata kuliah &mdash;</option>
+              ${courseOptions()}
+            </select>
           </div>
 
           <div class="field-row">
@@ -580,7 +618,7 @@ function init(): void {
   // Simpan referensi elemen supaya tidak query berulang kali.
   form = mustQuery<HTMLFormElement>('#task-form');
   titleInput = mustQuery<HTMLInputElement>('#title');
-  courseInput = mustQuery<HTMLInputElement>('#course');
+  courseSelect = mustQuery<HTMLSelectElement>('#course');
   deadlineInput = mustQuery<HTMLInputElement>('#deadline');
   statusSelect = mustQuery<HTMLSelectElement>('#status');
   formTitle = mustQuery<HTMLHeadingElement>('#form-title');
