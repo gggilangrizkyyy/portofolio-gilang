@@ -1,1 +1,1 @@
-Baris ini ditulis oleh branch A.
+Baris hasil gabungan branch A dan branch B (konflik sudah diselesaikan).
