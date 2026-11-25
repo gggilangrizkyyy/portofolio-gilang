@@ -1,1 +1,1 @@
-Baris awal untuk latihan merge conflict.
+Baris ini ditulis oleh branch A.
