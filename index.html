@@ -827,10 +827,13 @@
 }
 
 <span class="text-gray-400">// T = tipe data yang disimpan; dipakai ulang untuk Task[]</span>
-<span class="text-sky-300">export function</span> loadData&lt;T&gt;(key: <span class="text-sky-300">string</span>, fallback: T): T {
+<span class="text-sky-300">export function</span> loadData&lt;T&gt;(key: <span class="text-sky-300">string</span>): T | <span class="text-sky-300">null</span> {
   <span class="text-sky-300">const</span> raw = localStorage.getItem(key);
-  <span class="text-sky-300">return</span> raw ? (JSON.parse(raw) <span class="text-sky-300">as</span> T) : fallback;
-}</pre>
+  <span class="text-sky-300">return</span> raw ? (JSON.parse(raw) <span class="text-sky-300">as</span> T) : <span class="text-sky-300">null</span>;
+}
+
+<span class="text-gray-400">// dipakai di main.ts</span>
+<span class="text-sky-300">let</span> tasks: Task[] = loadData&lt;Task[]&gt;(STORAGE_KEY) ?? [];</pre>
                                     <p>
                                         Setelah tipe selesai diperiksa, TypeScript menghapus seluruh anotasi tipe. Yang
                                         dikirim ke browser tetap JavaScript biasa.
